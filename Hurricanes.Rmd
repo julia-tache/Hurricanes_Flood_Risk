@@ -26,16 +26,22 @@ loadfonts(device = "win")
 
 ```
 
-```{r}
+```{r load data}
 
 fema_flood_claims <- read_csv("FimaNfipClaims.csv")
+NC_FIPS_Codes <- read_csv("NC_FIPS_Codes.csv")
+NC_FIPS_Codes$countyCode <- as.character(NC_FIPS_Codes$countyCode)
+
+```
+
+
+```{r load data bar plot}
 
 fema_flood_claims$yearOfLoss <- as.numeric(substr(fema_flood_claims$dateOfLoss, 1, 4))
 
 fema_flood_claims_nc <- fema_flood_claims %>%
   filter(state == "NC") %>%
   arrange(crsClassificationCode)
-
 
 fema_flood_claims_nc_2018_2023 <- fema_flood_claims_nc %>%
   filter(yearOfLoss >= 2014) %>%
@@ -55,7 +61,7 @@ fema_flood_claims_nc_2018_2023_summary <- fema_flood_claims_nc_2018_2023 %>%
   filter(!is.na(amountPaidOnBuildingClaim)) %>%
   select(countyCode, SpecialFloodHazardArea, amountPaidOnBuildingClaim) %>%
   group_by(countyCode, SpecialFloodHazardArea) %>%
-  summarize(totalamountPaidOnBuildingClaim = sum(amountPaidOnBuildingClaim)) %>%
+  summarize(totalamountPaidOnBuildingClaim = mean(amountPaidOnBuildingClaim)) %>%
   filter(!is.na(SpecialFloodHazardArea)) %>%
   pivot_wider(names_from = SpecialFloodHazardArea,  values_from = totalamountPaidOnBuildingClaim) %>%
   mutate(`Non-SFHA` = ifelse(is.na(`Non-SFHA`), 0, `Non-SFHA`)) %>%
@@ -65,16 +71,13 @@ fema_flood_claims_nc_2018_2023_summary <- fema_flood_claims_nc_2018_2023 %>%
   mutate(Ratio = ifelse(is.infinite(Ratio), 0, Ratio)) %>%
   arrange(desc(Ratio))
 
-NC_FIPS_Codes <- read_csv("NC_FIPS_Codes.csv")
-NC_FIPS_Codes$countyCode <- as.character(NC_FIPS_Codes$countyCode)
-
 left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
   mutate(labels = as.character(round(Ratio, 1))) %>%
   filter(Ratio > 1.751) %>%
   ggplot(aes(x = reorder(`County Name`, Ratio), y = Ratio)) +
   geom_bar(position = "dodge", stat = "identity", fill = "#439381") +
-  ggtitle("\nRatio of SFHA and Non-SFHA Claims, North Carolina") +
-  labs(subtitle = "Special Flood Hazard Areas (SFHAs) are designated high-risk flood areas.\nHomeowners located in these zones are required to purchase flood insurance if\nthey have a mortgage from a federally-backed or federally-regulated lender.\n\nThese are the top 10 counties with the highest ratios of non-SFHA to\nSFHA amounts paid on building claims after floods from 2018 to 2023.",
+  ggtitle("\nRatio of Non-SFHA and SFHA Claims, North Carolina") +
+  labs(subtitle = "Special Flood Hazard Areas (SFHAs) are designated high-risk flood areas.\nHomeowners located in these zones are required to purchase flood insurance if\nthey have a mortgage from a federally-backed or federally-regulated lender.\n\nThese are the top 10 counties with the highest ratios of non-SFHA to\nSFHA amounts paid on building claims after floods from 2014 to 2023.",
        caption = "Please note that observations with missing flood zone designations have been removed | Source: FEMA | github: julia-tache") +
   coord_flip() +
   geom_text(aes(label = labels), position = position_dodge(width = 0.9), fontface = "bold", color = "white", family = "Georgia", hjust = 1.2, vjust = 0.3, size = 3.5) +
@@ -85,7 +88,7 @@ left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
         panel.grid.minor = element_line(color = "#F5F5F5"),
         plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
         plot.subtitle = element_text(size = 12, hjust = 0.5),
-        plot.caption = element_text(size = 8, face = "italic", hjust = 1),
+        plot.caption = element_text(size = 8, face = "italic", hjust = 0.5),
         axis.title.x = element_blank(),
         axis.text.x = element_text(size = 12),
         axis.title.y = element_blank(),
@@ -93,7 +96,7 @@ left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
         axis.ticks = element_blank(),
         text = element_text(family = "Georgia", size = 13))
 
-ggsave("nc_sfha_claims.png", height = 5, width = 9)
+ggsave("nc_sfha_claims.png", height = 5, width = 8)
   
 ```
 
