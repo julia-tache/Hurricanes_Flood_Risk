@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r load packages}
 
 library(tidyverse)
+library(urbnmapr)
 library(reshape2)
 library(spatstat)
 library(scales)
@@ -20,6 +21,7 @@ library(RColorBrewer)
 library(grid)
 library(gridExtra)
 library(pollster)
+library(ggh4x)
 library(extrafont)
 library(formattable)
 loadfonts(device = "win")
@@ -31,6 +33,8 @@ loadfonts(device = "win")
 fema_flood_claims <- read_csv("FimaNfipClaims.csv")
 NC_FIPS_Codes <- read_csv("NC_FIPS_Codes.csv")
 NC_FIPS_Codes$countyCode <- as.character(NC_FIPS_Codes$countyCode)
+
+
 
 ```
 
@@ -71,6 +75,11 @@ fema_flood_claims_nc_2018_2023_summary <- fema_flood_claims_nc_2018_2023 %>%
   mutate(Ratio = ifelse(is.infinite(Ratio), 0, Ratio)) %>%
   arrange(desc(Ratio))
 
+```
+
+
+```{r load data bar plot}
+
 left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
   mutate(labels = as.character(round(Ratio, 1))) %>%
   filter(Ratio > 1.751) %>%
@@ -98,5 +107,68 @@ left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
 
 ggsave("nc_sfha_claims.png", height = 5, width = 8)
   
+```
+```{r county map}
+
+## NEED TO MAKE BINS.
+
+ratio_labels_top_counties <- left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
+  mutate(labels = as.character(round(Ratio, 1))) %>%
+  rename("county_fips" = "countyCode") %>%
+  left_join(counties, by = "county_fips") %>%
+  filter(state_name == "North Carolina") %>%
+  group_by(labels, group) %>%
+  summarize(avg_lat = mean(lat),
+            avg_lon = mean(long)) %>%
+  arrange(desc(as.numeric(labels))) %>%
+  filter(as.numeric(labels) > 2.7)
+
+ratios_text_counties <- left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
+  mutate(labels = as.character(round(Ratio, 1))) %>%
+  rename("county_fips" = "countyCode") %>%
+  left_join(counties, by = "county_fips") %>%
+  filter(state_name == "North Carolina") %>%
+  arrange(desc(as.numeric(labels))) %>%
+  filter(as.numeric(labels) <= 2.7) %>%
+  filter(as.numeric(labels) >= 1.5)
+
+mapping_joined_nc_county_ratios <- left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
+  mutate(labels = as.character(round(Ratio, 1))) %>%
+  rename("county_fips" = "countyCode") %>%
+  left_join(counties, by = "county_fips") %>%
+  filter(state_name == "North Carolina")
+
+ggplot() +
+  geom_polygon(data = mapping_joined_nc_county_ratios,
+       mapping = aes(long, lat, group = group, fill = Ratio),
+       color = "black", size = .25) +
+  stat_midpoint(data = ratios_text_counties, aes(x = long, y = lat, group = group, label = labels), geom = "label", fill = "#c3b2c1", size = 2, face = "bold", family = "Georgia", padding = 1, label.padding = unit(0.25, "lines")) +
+  ggrepel::geom_label_repel(data = ratio_labels_top_counties, aes(x = avg_lon, y = avg_lat, group = group, label = labels), geom = "text", size = 4, face = "bold", family = "Georgia", padding = 1, label.padding = unit(0.25, "lines"), fill = "#6a73b2") +
+  scale_fill_gradientn(colors = c("#f4eaae", "#6a73b2"),
+                       guide = guide_colorbar(title.position = "top")) +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  ggtitle("Ratio of Non-SFHA and SFHA Claims, North Carolina") +
+  labs(subtitle = "Special Flood Hazard Areas (SFHAs) are designated high-risk flood areas.\nHomeowners located in these zones are required to purchase flood insurance if\nthey have a mortgage from a federally-backed or federally-regulated lender.\n\nThe top 10 counties with the highest ratios of non-SFHA to SFHA amounts\npaid on building claims after floods from 2014 to 2023 were Ashe (18.9),\nMartin (7.4), Halifax (7.3), Chatham (4.7), and Gates counties (3.6).",
+       caption = "Please note that observations with missing flood zone designations have been removed | Source: FEMA | github: julia-tache") +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 10, hjust = 0.5),
+        plot.caption = element_text(size = 8, face = "italic", hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        legend.title = element_blank(),
+        legend.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "left",
+        text = element_text(family = "Georgia", size = 13))
+
+ggsave("nc_sfha_claims_map.png", height = 5, width = 8)
+
 ```
 
