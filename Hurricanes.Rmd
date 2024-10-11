@@ -32,14 +32,86 @@ loadfonts(device = "win")
 
 fema_flood_claims <- read_csv("FimaNfipClaims.csv")
 NC_FIPS_Codes <- read_csv("NC_FIPS_Codes.csv")
+FL_FIPS_Codes <- read_csv("FL_FIPS_Codes.csv")
 NC_FIPS_Codes$countyCode <- as.character(NC_FIPS_Codes$countyCode)
+FL_FIPS_Codes$countyCode <- as.character(FL_FIPS_Codes$countyCode)
 
+```
 
+```{r number of storms}
+
+n <- c(23, 22, 13, 10)
+decade <- c("2010s", "2020-23", "2010s", "2020-23")
+type <- c("Tropical Storms", "Tropical Storms", "Hurricanes", "Hurricanes")
+
+data.frame(n, decade, type) %>%
+  ggplot(aes(x = reorder(decade, n), y = n)) +
+  geom_bar(position = "dodge", stat = "identity", fill = "#439381") +
+  coord_flip() +
+  facet_wrap(~type) +
+  ggtitle("\nNumber of Hurricanes and\nTropical Storms that Made U.S. Landfall") +
+  labs(subtitle = "There have been nearly the same number of storms that made\nlandfall from 2010 to 2019 as there have been from 2020 to 2023 alone.",
+       caption = "Source: NOAA | github: julia-tache") +
+  geom_text(aes(label = n), size = 8, hjust = 1.5, family = "Georgia") +
+  coord_flip() +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 8, face = "italic", hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 12),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia", size = 13))
+
+ggsave("n_storms.png", height = 5, width = 8)
+
+```
+
+```{r cost of damages}
+
+storm_name <- c("Katrina (2005)", "Ian (2022)", "Helene (2024)", "Ida (2021)", "Sandy (2012)", "Harvey (2017)", "Irma (2017)", "Maria (2017)", "Andrew (1992)", "Ike (2008)", "Wilma (2005)")
+cost <- c(104706, 57322, 47500, 41633, 41031, 39658, 38518, 37828, 35926, 26318, 16994)
+labels <- c("$104.7B", "$57.3B", "$47.5B (Estimated)", "$41.6B", "$41.0B", "$39.7", "$38.5B", "$37.8B", "$35.9B", "$26.3B", "$17.0B")
+fill_flag <- c("x", "x", "y", "x", "x", "x", "x", "x", "x", "x", "x")
+
+data.frame(storm_name, cost, labels) %>%
+  ggplot(aes(x = reorder(storm_name, cost), y = cost, fill = fill_flag)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  coord_flip() +
+  ggtitle("\nTop 11 Costliest Hurricanes in the U.S.") +
+  labs(caption = "Source: Insurance Information Institute, NOAA | github: julia-tache") +
+  ylab("\nEstimated insured loss (in 2024 dollars)") +
+  geom_text(aes(label = labels), hjust = 1.25, vjust = 0.25, family = "Georgia") +
+  scale_y_continuous(labels = label_dollar()) +
+  scale_fill_manual(values = c("#439381", "#F0BD70")) +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 8, face = "italic", hjust = 0.5),
+        axis.title.x = element_text(size = 14),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 12),
+        axis.ticks = element_blank(),
+        legend.position = "none",
+        text = element_text(family = "Georgia", size = 13))
+
+ggsave("cost_of_damanges.png", height = 5, width = 8)
 
 ```
 
 
-```{r load data bar plot}
+```{r nc bar plot}
 
 fema_flood_claims$yearOfLoss <- as.numeric(substr(fema_flood_claims$dateOfLoss, 1, 4))
 
@@ -75,11 +147,6 @@ fema_flood_claims_nc_2018_2023_summary <- fema_flood_claims_nc_2018_2023 %>%
   mutate(Ratio = ifelse(is.infinite(Ratio), 0, Ratio)) %>%
   arrange(desc(Ratio))
 
-```
-
-
-```{r load data bar plot}
-
 left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
   mutate(labels = as.character(round(Ratio, 1))) %>%
   filter(Ratio > 1.751) %>%
@@ -108,9 +175,9 @@ left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
 ggsave("nc_sfha_claims.png", height = 5, width = 8)
   
 ```
-```{r county map}
+```{r nc county map}
 
-## NEED TO MAKE BINS.
+## NEED TO MAKE BINS AND ADD COUNTY NAME LABELS???
 
 ratio_labels_top_counties <- left_join(fema_flood_claims_nc_2018_2023_summary, NC_FIPS_Codes) %>%
   mutate(labels = as.character(round(Ratio, 1))) %>%
@@ -136,27 +203,31 @@ mapping_joined_nc_county_ratios <- left_join(fema_flood_claims_nc_2018_2023_summ
   mutate(labels = as.character(round(Ratio, 1))) %>%
   rename("county_fips" = "countyCode") %>%
   left_join(counties, by = "county_fips") %>%
-  filter(state_name == "North Carolina")
+  filter(state_name == "North Carolina") %>%
+  mutate(points_bin = cut(Ratio, breaks = c(0, 1, 2, 7, 10, 18, 19),
+                          labels = c("0-1", "1-2", "2-7", "7-10", "10-18", "18-19"),
+                          include.lowest = TRUE))
 
 ggplot() +
   geom_polygon(data = mapping_joined_nc_county_ratios,
-       mapping = aes(long, lat, group = group, fill = Ratio),
-       color = "black", size = .25) +
-  stat_midpoint(data = ratios_text_counties, aes(x = long, y = lat, group = group, label = labels), geom = "label", fill = "#c3b2c1", size = 2, face = "bold", family = "Georgia", padding = 1, label.padding = unit(0.25, "lines")) +
-  ggrepel::geom_label_repel(data = ratio_labels_top_counties, aes(x = avg_lon, y = avg_lat, group = group, label = labels), geom = "text", size = 4, face = "bold", family = "Georgia", padding = 1, label.padding = unit(0.25, "lines"), fill = "#6a73b2") +
-  scale_fill_gradientn(colors = c("#f4eaae", "#6a73b2"),
-                       guide = guide_colorbar(title.position = "top")) +
+               mapping = aes(long, lat, group = group, fill = points_bin),
+               color = "black", size = .25) +
+  ggrepel::geom_label_repel(data = ratio_labels_top_counties, aes(x = avg_lon, y = avg_lat, group = group, label = labels), size = 4, face = "bold", family = "Georgia", color = "white", padding = 1, label.padding = unit(0.25, "lines"), fill = "#2F6569") +
+  scale_fill_manual(values = c("#d9ed92", "#b5e48c", "#76c893", "#43938A", "#2F6569"),
+                    guide = guide_legend(keyheight = unit(2, units = "mm"),
+                                         keywidth = unit(1, units = "mm"),
+                                         label.position = "bottom", nrow = 1)) +
   coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
-  ggtitle("Ratio of Non-SFHA and SFHA Claims, North Carolina") +
-  labs(subtitle = "Special Flood Hazard Areas (SFHAs) are designated high-risk flood areas.\nHomeowners located in these zones are required to purchase flood insurance if\nthey have a mortgage from a federally-backed or federally-regulated lender.\n\nThe top 10 counties with the highest ratios of non-SFHA to SFHA amounts\npaid on building claims after floods from 2014 to 2023 were Ashe (18.9),\nMartin (7.4), Halifax (7.3), Chatham (4.7), and Gates counties (3.6).",
+  ggtitle("\nRatio of Non-SFHA and SFHA Claims,\nNorth Carolina Counties") +
+  labs(subtitle = "\nThe top 5 counties with the highest ratios of non-SFHA to SFHA amounts\npaid on building claims after floods from 2014 to 2023 were Ashe (18.9),\nMartin (7.4), Halifax (7.3), Chatham (4.7), and Gates counties (3.6).",
        caption = "Please note that observations with missing flood zone designations have been removed | Source: FEMA | github: julia-tache") +
   theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
         plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
         panel.background = element_rect(fill = "#F5F5F5", color = NA),
         panel.grid.major = element_line(color = "#F5F5F5"),
         panel.grid.minor = element_line(color = "#F5F5F5"),
-        plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(size = 10, hjust = 0.5),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
         plot.caption = element_text(size = 8, face = "italic", hjust = 0.5),
         axis.title.x = element_blank(),
         axis.text.x = element_blank(),
@@ -165,10 +236,113 @@ ggplot() +
         axis.ticks = element_blank(),
         legend.title = element_blank(),
         legend.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "left",
-        text = element_text(family = "Georgia", size = 13))
-
+        legend.position = "top",
+        text = element_text(family = "Georgia"))
+  
 ggsave("nc_sfha_claims_map.png", height = 5, width = 8)
 
 ```
 
+```{r fl bar plot}
+
+fema_flood_claims_fl <- fema_flood_claims %>%
+  filter(state == "FL") %>%
+  arrange(crsClassificationCode)
+
+fema_flood_claims_fl_2018_2023 <- fema_flood_claims_fl %>%
+  filter(yearOfLoss >= 2014) %>%
+  filter(yearOfLoss <= 2023)
+
+fema_flood_claims_fl_2018_2023$SpecialFloodHazardArea <- substr(fema_flood_claims_fl_2018_2023$ratedFloodZone, 1, 1)
+
+fema_flood_claims_fl_2018_2023 <- fema_flood_claims_fl_2018_2023 %>%
+  mutate(SpecialFloodHazardArea = case_when(
+    SpecialFloodHazardArea == "A" ~ "SFHA",
+    SpecialFloodHazardArea == "V" ~ "SFHA",
+    SpecialFloodHazardArea == "B" ~ "Non-SFHA",
+    SpecialFloodHazardArea == "C" ~ "Non-SFHA",
+    SpecialFloodHazardArea == "X" ~ "Non-SFHA"))
+
+fema_flood_claims_fl_2018_2023_summary <- fema_flood_claims_fl_2018_2023 %>%
+  filter(!is.na(amountPaidOnBuildingClaim)) %>%
+  select(countyCode, SpecialFloodHazardArea, amountPaidOnBuildingClaim) %>%
+  group_by(countyCode, SpecialFloodHazardArea) %>%
+  summarize(totalamountPaidOnBuildingClaim = mean(amountPaidOnBuildingClaim)) %>%
+  filter(!is.na(SpecialFloodHazardArea)) %>%
+  pivot_wider(names_from = SpecialFloodHazardArea,  values_from = totalamountPaidOnBuildingClaim) %>%
+  mutate(`Non-SFHA` = ifelse(is.na(`Non-SFHA`), 0, `Non-SFHA`)) %>%
+  mutate(`SFHA` = ifelse(is.na(`SFHA`), 0, `SFHA`)) %>%
+  mutate(Ratio = `Non-SFHA` / SFHA) %>%
+  mutate(Ratio = ifelse(is.na(Ratio), 0, Ratio)) %>%
+  mutate(Ratio = ifelse(is.infinite(Ratio), 0, Ratio)) %>%
+  arrange(desc(Ratio))
+
+FL_FIPS_Codes$countyCode <- paste0("12", FL_FIPS_Codes$countyCode)
+
+left_join(fema_flood_claims_fl_2018_2023_summary, FL_FIPS_Codes) %>%
+  mutate(labels = as.character(round(Ratio, 1))) %>%
+  filter(Ratio > 1.19) %>%
+  ggplot(aes(x = reorder(`County Name`, Ratio), y = Ratio)) +
+  geom_bar(position = "dodge", stat = "identity", fill = "#439381") +
+  ggtitle("\nRatio of Non-SFHA and SFHA Claims, Florida") +
+  labs(subtitle = "\nWhile some counties incurred 3x or more in building claims in non-SFHA areas,\nmost areas did not see a dramatic difference over a 10-year period.",
+       caption = "Please note that observations with missing flood zone designations have been removed | Source: FEMA | github: julia-tache") +
+  coord_flip() +
+  geom_text(aes(label = labels), position = position_dodge(width = 0.9), fontface = "bold", color = "white", family = "Georgia", hjust = 1.2, vjust = 0.3, size = 3.5) +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 8, face = "italic", hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 12),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia"))
+
+ggsave("fl_sfha_claims.png", height = 5, width = 8)
+
+```
+
+```{r fema grants}
+
+tuesdata <- tidytuesdayR::tt_load("2023-10-03")
+fed_grants <- tuesdata$grants
+
+fed_grants$year <- format(as.Date(fed_grants$posted_date, format="%Y/%m/%d"),"%Y")
+
+fed_grants %>%
+  filter(agency_name == "Department of Homeland Security - FEMA") %>%
+  filter(opportunity_title != "Other Needs Assistance - Lost Wages") %>%
+  group_by(year) %>%
+  filter(year > 2011) %>%
+  summarize(total_estimated_funding = sum(estimated_funding, na.rm = TRUE)) %>%
+  mutate(total_estimated_funding_millions = total_estimated_funding / 1000000) %>%
+  ggplot(aes(x = year, y = total_estimated_funding_millions)) +
+  geom_bar(position = "dodge", stat = "identity", fill = "#439381") +
+  scale_y_continuous(labels = label_dollar()) +
+  ggtitle("\nFEMA Grant Opportunities, in millions") +
+  labs(subtitle = "\nThere was $1.5B less in grant opportunities from the Federal Emergency\nManagement Agency in 2023 compared to 2022.",
+       caption = "Please note that funding for lost wages in 2020 was removed | Source: grants.gov | github: julia-tache") +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 8, face = "italic", hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 12),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia"))
+
+ggsave("fema_grants.png", height = 5, width = 8)
+
+```
